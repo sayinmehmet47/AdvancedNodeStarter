@@ -46,3 +46,9 @@ mongoose.Query.prototype.cache = function (options = {}) {
   this.hashKey = JSON.stringify(options.key || '');
   return this;
 };
+
+module.exports = {
+  clearHash(hashKey) {
+    client.del(JSON.stringify(hashKey));
+  },
+};
