@@ -15,15 +15,15 @@ class CustomPage {
     const page = await browser.newPage();
     const customPage = new CustomPage(page);
     return new Proxy(customPage, {
-      get: (target, proprety) => {
-        return customPage[proprety] || browser[proprety] || page[proprety];
+      get: (target, property) => {
+        return customPage[property] || browser[property] || page[property];
       },
     });
   }
 
   async login() {
     const user = await userFactory();
-    const { session, sig } = sessionFactory(user);
+    const { session, sig } = new sessionFactory(user);
 
     await this.page.setCookie({ name: 'session', value: session });
     await this.page.setCookie({ name: 'session.sig', value: sig });

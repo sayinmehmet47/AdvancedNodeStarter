@@ -1,77 +1,31 @@
-const puppeteer = require('puppeteer');
-const sessionFactory = require('./sessionFactory');
-const userFactory = require('./userFactory');
+const Buffer = require('safe-buffer').Buffer;
+const Keygrip = require('keygrip');
+const keys = require('../../config/keys');
 
-class CustomPage {
-  constructor(page) {
-    this.page = page;
+class SessionFactory {
+  constructor(user) {
+    this.user = user;
+    this.session = this.createSession();
+    this.sig = this.createSig();
   }
 
-  static async build() {
-    const browser = await puppeteer.launch({
-      headless: true,
-      args: ['--no-sandbox'],
-    });
-    const page = await browser.newPage();
-    const customPage = new CustomPage(page);
-    return new Proxy(customPage, {
-      get: (target, proprety) => {
-        return customPage[proprety] || browser[proprety] || page[proprety];
+  createSession() {
+    const sessionObject = {
+      passport: {
+        user: this.user._id.toString(),
       },
-    });
-  }
-
-  async login() {
-    const user = await userFactory();
-    const { session, sig } = sessionFactory(user);
-
-    await this.page.setCookie({ name: 'session', value: session });
-    await this.page.setCookie({ name: 'session.sig', value: sig });
-
-    await this.page.goto('http://localhost:3000/blogs');
-    await this.page.waitFor("a[href='/auth/logout']");
-  }
-
-  async getContentsOf(selector) {
-    return this.page.$eval(selector, (el) => el.innerHTML);
-  }
-
-  get(path) {
-    return this.page.evaluate(async (_path) => {
-      return fetch(_path, {
-        method: 'GET',
-        credentials: 'same-origin',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-      }).then((res) => res.json());
-    }, path);
-  }
-
-  post(path, data) {
-    return this.page.evaluate(
-      async (_path, _data) => {
-        return fetch(_path, {
-          method: 'POST',
-          credentials: 'same-origin',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify(_data),
-        }).then((res) => res.json());
-      },
-      path,
-      data
+    };
+    const sessionString = Buffer.from(JSON.stringify(sessionObject)).toString(
+      'base64'
     );
+    return sessionString;
   }
 
-  execRequest(actions) {
-    return Promise.all(
-      actions.map(({ method, path, data }) => {
-        return this[method](path, data);
-      })
-    );
+  createSig() {
+    const keygrip = new Keygrip([keys.cookieKey]);
+    const sig = keygrip.sign('session=' + this.session);
+    return sig;
   }
 }
 
-module.exports = CustomPage;
+module.exports = SessionFactory;
