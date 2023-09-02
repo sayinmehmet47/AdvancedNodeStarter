@@ -33,7 +33,6 @@ mongoose.Query.prototype.exec = async function (options = {}) {
   }
 
   // Otherwise, issue the query and store the result in redis
-
   const result = await exec.apply(this, arguments);
   console.log('SERVING FROM MONGODB');
 
